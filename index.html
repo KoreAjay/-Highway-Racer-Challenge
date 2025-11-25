@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Highway Racer Challenge</title>
+    <style>
+        /* Base styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(145deg, #1e272e 0%, #000000 100%);
+            color: #ecf0f1;
+            padding: 20px 0;
+            user-select: none;
+        }
+
+        /* Game Container */
+        .game-container {
+            background-color: #34495e;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7);
+            text-align: center;
+            width: fit-content;
+            max-width: 90vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        h1 {
+            color: #2ecc71; /* Green accent */
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+
+        .instructions {
+            background: #2c3e50;
+            color: #bdc3c7;
+            padding: 8px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+        
+        /* Canvas */
+        #game-canvas {
+            border: 5px solid #2980b9;
+            background-color: #34495e; 
+            border-radius: 5px;
+            box-shadow: inset 0 0 15px rgba(0, 0, 0, 0.5);
+            touch-action: none;
+        }
+        
+        /* Game Info Bar */
+        .game-info {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-top: 10px;
+            font-size: 1em;
+            color: #f1c40f;
+            font-weight: 600;
+        }
+
+        /* --- MOBILE/TOUCH CONTROLS --- */
+        .controls-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            width: 600px; /* Matches canvas width */
+            max-width: 100%;
+            margin-top: 20px;
+        }
+
+        .control-btn {
+            background: #2980b9;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.5em;
+            font-weight: bold;
+            padding: 15px;
+            width: 70px;
+            height: 70px;
+            cursor: pointer;
+            box-shadow: 0 4px #2471a3;
+            transition: background 0.1s, box-shadow 0.1s;
+        }
+
+        .control-btn:active {
+            box-shadow: 0 2px #2471a3;
+            transform: translateY(2px);
+        }
+
+        .vertical-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-left: 100px; /* Push it towards the right side */
+        }
+        
+        #accelerate {
+            background: #2ecc71; /* Green for gas */
+            box-shadow: 0 4px #27ad60;
+        }
+        #accelerate:active {
+            box-shadow: 0 2px #27ad60;
+        }
+        
+        #brake {
+            background: #e74c3c; /* Red for brake */
+            box-shadow: 0 4px #c0392b;
+        }
+        #brake:active {
+            box-shadow: 0 2px #c0392b;
+        }
+
+        /* Media Query for smaller screens (Mobile) */
+        @media (max-width: 650px) {
+            .controls-container {
+                width: 90vw;
+                padding: 0 5vw;
+                justify-content: space-around;
+            }
+            .control-btn {
+                width: 60px;
+                height: 60px;
+            }
+            .vertical-controls {
+                margin-left: 0;
+            }
+        }
+        
+        /* Modal Styling (same as previous) */
+        #game-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        #modal-content-box {
+            background: #2980b9;
+            color: white;
+            padding: 40px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(41, 128, 185, 0.5);
+            animation: bounceIn 0.8s ease-out;
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            70% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+
+        #modal-content-box h2 {
+            margin-top: 0;
+            font-size: 2.5em;
+        }
+
+        #modal-content-box button {
+            padding: 12px 30px;
+            background: #f1c40f; 
+            color: #2c3e50;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: transform 0.1s, box-shadow 0.1s;
+            box-shadow: 0 5px #d4ac0d;
+        }
+
+        #modal-content-box button:active {
+            box-shadow: 0 2px #d4ac0d;
+            transform: translateY(3px);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <h1>Highway Racer Challenge</h1>
+        <div class="instructions">
+            **Keyboard (Laptop):** Arrow Keys or WASD.
+            **Touch (Mobile):** Use the large buttons below. Stay on the road!
+        </div>
+        
+        <canvas id="game-canvas" width="600" height="400"></canvas>
+        
+        <div class="game-info">
+            <span id="speed-display">Speed: 0 km/h</span>
+            <span id="time-display">Time: 0.0s</span>
+        </div>
+    </div>
+    
+    <!-- Mobile/Touch Controls -->
+    <div class="controls-container">
+        <button id="turn-left" class="control-btn">◀</button>
+        
+        <div class="vertical-controls">
+            <button id="accelerate" class="control-btn">▲</button>
+            <button id="brake" class="control-btn">▼</button>
+        </div>
+
+        <button id="turn-right" class="control-btn">▶</button>
+    </div>
+
+
+    <!-- Game Modal -->
+    <div id="game-modal">
+        <div id="modal-content-box">
+            <h2 id="modal-title">Ready to Race?</h2>
+            <p id="modal-message">Your car is centered, and the track scrolls around you. Aim for maximum speed!</p>
+            <button onclick="startGame()">Start Race</button>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME CONSTANTS AND VARIABLES ---
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const WIDTH = canvas.width;
+        const HEIGHT = canvas.height;
+
+        const modal = document.getElementById('game-modal');
+        const speedDisplay = document.getElementById('speed-display');
+        const timeDisplay = document.getElementById('time-display');
+
+        // Car Physics Constants
+        const ACCELERATION = 0.05;
+        const MAX_SPEED = 5;
+        const FRICTION = 0.98;
+        const ROTATION_SPEED = 0.03;
+        const OFF_TRACK_FRICTION = 0.8; // Heavy drag when on grass
+        const ROAD_WIDTH = 100;
+
+        // Game State
+        let gameState = 'start';
+        let startTime = 0;
+        let gameTime = 0;
+        let animationFrame;
+        
+        // Car State
+        let car = {
+            // car.x and car.y are ABSOLUTE WORLD coordinates
+            x: 150, 
+            y: 150,
+            width: 10,
+            height: 20,
+            angle: 0, // Starts facing right (0 radians)
+            speed: 0,
+            vx: 0,
+            vy: 0,
+            color: '#e74c3c' 
+        };
+        
+        // Camera State (Determines what part of the world to render)
+        let cameraX = 0;
+        let cameraY = 0;
+
+        // Input State
+        let keys = { up: false, down: false, left: false, right: false };
+
+        // --- TRACK DEFINITION (Long, Winding Path with large coordinates) ---
+        // These are ABSOLUTE World Coordinates for the center line of the track.
+        const TRACK_PATH = [
+            [150, 150], [800, 150],
+            [1000, 300], [1000, 800],
+            [800, 1000], [150, 1000],
+            [50, 700], [50, 300],
+            [150, 150] // Close loop
+        ];
+        
+        // --- CORE GAME FUNCTIONS ---
+
+        function startGame() {
+            modal.style.display = 'none';
+            gameState = 'playing';
+            startTime = performance.now();
+            
+            // Reset car position
+            car.x = TRACK_PATH[0][0];
+            car.y = TRACK_PATH[0][1];
+            car.angle = 0; 
+            car.speed = 0;
+            car.vx = 0;
+            car.vy = 0;
+            cameraX = car.x - WIDTH / 2;
+            cameraY = car.y - HEIGHT / 2;
+
+            if (animationFrame) cancelAnimationFrame(animationFrame);
+            animate();
+        }
+
+        function updateCar() {
+            if (gameState !== 'playing') return;
+
+            // 1. Steering (Rotate based on speed, only steer if moving)
+            if (keys.left) {
+                car.angle -= ROTATION_SPEED * Math.abs(car.speed / MAX_SPEED);
+            }
+            if (keys.right) {
+                car.angle += ROTATION_SPEED * Math.abs(car.speed / MAX_SPEED);
+            }
+            
+            // 2. Acceleration / Braking
+            if (keys.up) {
+                car.speed = Math.min(car.speed + ACCELERATION, MAX_SPEED);
+            } else if (keys.down) {
+                car.speed = Math.max(car.speed - ACCELERATION, -MAX_SPEED / 3); // Reverse speed
+            } 
+            
+            // 3. Friction / Drag
+            let frictionFactor = FRICTION;
+            
+            if (isCarOnTrack(car.x, car.y)) {
+                car.color = '#e74c3c'; // Red when on track
+            } else {
+                frictionFactor = OFF_TRACK_FRICTION; // Slow down heavily on grass
+                car.color = '#f1c40f'; // Yellow when off track
+            }
+
+            car.speed *= frictionFactor;
+
+            // Stop speed if negligible
+            if (Math.abs(car.speed) < 0.01) {
+                car.speed = 0;
+            }
+
+            // 4. Update Velocity and Position
+            car.vx = car.speed * Math.cos(car.angle);
+            car.vy = car.speed * Math.sin(car.angle);
+            
+            car.x += car.vx;
+            car.y += car.vy;
+            
+            // 5. Update Camera (Keep car centered)
+            cameraX = car.x - WIDTH / 2;
+            cameraY = car.y - HEIGHT / 2;
+
+            // 6. Update HUD
+            const currentSpeedKmH = Math.abs(car.speed * 40); // Scaling for realism
+            speedDisplay.textContent = `Speed: ${currentSpeedKmH.toFixed(1)} km/h`;
+            
+            gameTime = (performance.now() - startTime) / 1000;
+            timeDisplay.textContent = `Time: ${gameTime.toFixed(1)}s`;
+        }
+        
+        /**
+         * Checks if a point (x, y) is on the track (within ROAD_WIDTH/2 of the center path).
+         * This uses a simple distance check between the point and the nearest point on the track line segments.
+         */
+        function isCarOnTrack(x, y) {
+            const pathTolerance = ROAD_WIDTH / 2;
+
+            for (let i = 0; i < TRACK_PATH.length - 1; i++) {
+                const [x1, y1] = TRACK_PATH[i];
+                const [x2, y2] = TRACK_PATH[i + 1];
+
+                // Simplified: Calculate distance to line segment
+                const lenSq = (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1);
+                
+                // Handle zero-length segments
+                if (lenSq === 0) continue; 
+                
+                // Project point onto the segment line
+                let t = ((x - x1) * (x2 - x1) + (y - y1) * (y2 - y1)) / lenSq;
+                t = Math.max(0, Math.min(1, t)); // Clamp t to 0..1 (within segment)
+
+                // Closest point on the segment
+                const closestX = x1 + t * (x2 - x1);
+                const closestY = y1 + t * (y2 - y1);
+                
+                // Calculate distance from car to closest point
+                const distSq = (x - closestX) * (x - closestX) + (y - closestY) * (y - closestY);
+
+                if (distSq < pathTolerance * pathTolerance) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // --- RENDERING FUNCTIONS ---
+        
+        function drawTrack() {
+            // Draw Grass background (full screen in local space)
+            ctx.fillStyle = '#27ae60'; // Dark Green (Grass)
+            ctx.fillRect(0, 0, WIDTH, HEIGHT);
+            
+            // Set up stroke for the road itself (Grey road)
+            ctx.strokeStyle = '#7f8c8d'; 
+            ctx.lineWidth = ROAD_WIDTH;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Begin drawing the track path
+            ctx.beginPath();
+            
+            // Start the path at the first point (adjusted by camera offset)
+            const [startX, startY] = TRACK_PATH[0];
+            ctx.moveTo(startX - cameraX, startY - cameraY);
+
+            // Draw lines through all subsequent points
+            for (let i = 1; i < TRACK_PATH.length; i++) {
+                const [px, py] = TRACK_PATH[i];
+                ctx.lineTo(px - cameraX, py - cameraY);
+            }
+            
+            ctx.stroke();
+            
+            // Draw White Lane Markings (Dashed Center Line)
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([20, 30]);
+            
+            ctx.beginPath();
+            ctx.moveTo(startX - cameraX, startY - cameraY);
+            for (let i = 1; i < TRACK_PATH.length; i++) {
+                const [px, py] = TRACK_PATH[i];
+                ctx.lineTo(px - cameraX, py - cameraY);
+            }
+            ctx.stroke();
+            
+            // Reset line dash for normal drawing
+            ctx.setLineDash([]); 
+
+            // Draw Start/Finish Line (Simple yellow box on the road)
+            const [sX, sY] = TRACK_PATH[0];
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(sX - cameraX - ROAD_WIDTH / 2, sY - cameraY - ROAD_WIDTH / 2, ROAD_WIDTH, ROAD_WIDTH);
+        }
+
+        function drawCar() {
+            // Car is always drawn in the center of the canvas relative to the camera
+            const drawX = WIDTH / 2;
+            const drawY = HEIGHT / 2;
+
+            ctx.save();
+            ctx.translate(drawX, drawY);
+            ctx.rotate(car.angle + Math.PI / 2); // Adjust for drawing orientation 
+
+            // Draw Car Body
+            ctx.fillStyle = car.color;
+            ctx.fillRect(-car.width / 2, -car.height / 2, car.width, car.height);
+            
+            // Draw Headlights
+            ctx.fillStyle = 'yellow';
+            ctx.fillRect(-car.width / 2, car.height / 2 - 3, car.width / 3, 3);
+            ctx.fillRect(car.width / 6, car.height / 2 - 3, car.width / 3, 3);
+            
+            // Draw Tail lights (simplified)
+            ctx.fillStyle = 'red';
+            ctx.fillRect(-car.width / 2, -car.height / 2, car.width / 3, 3);
+            ctx.fillRect(car.width / 6, -car.height / 2, car.width / 3, 3);
+            
+            ctx.restore();
+        }
+
+        function drawGame() {
+            drawTrack();
+            drawCar();
+        }
+
+        // --- ANIMATION LOOP ---
+        function animate() {
+            updateCar();
+            drawGame();
+            animationFrame = requestAnimationFrame(animate);
+        }
+
+        // --- INPUT HANDLING (Keyboard for Laptop, Touch for Mobile) ---
+        
+        function updateKey(key, isPressed) {
+            switch (key) {
+                case 'ArrowUp':
+                case 'w':
+                case 'W':
+                case 'accelerate_touch':
+                    keys.up = isPressed;
+                    break;
+                case 'ArrowDown':
+                case 's':
+                case 'S':
+                case 'brake_touch':
+                    keys.down = isPressed;
+                    break;
+                case 'ArrowLeft':
+                case 'a':
+                case 'A':
+                case 'turn_left_touch':
+                    keys.left = isPressed;
+                    break;
+                case 'ArrowRight':
+                case 'd':
+                case 'D':
+                case 'turn_right_touch':
+                    keys.right = isPressed;
+                    break;
+            }
+        }
+        
+        // Keyboard Handlers
+        function handleKeyDown(e) {
+            if (gameState !== 'playing') return;
+            updateKey(e.key, true);
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 's', 'a', 'd'].includes(e.key.toLowerCase())) {
+                e.preventDefault(); 
+            }
+        }
+
+        function handleKeyUp(e) {
+            updateKey(e.key, false);
+        }
+
+        // Touch/Click Handlers for Mobile Buttons
+        const buttons = [
+            { id: 'accelerate', key: 'accelerate_touch' },
+            { id: 'brake', key: 'brake_touch' },
+            { id: 'turn-left', key: 'turn_left_touch' },
+            { id: 'turn-right', key: 'turn_right_touch' }
+        ];
+
+        buttons.forEach(btnInfo => {
+            const btn = document.getElementById(btnInfo.id);
+            if (btn) {
+                // Mousedown/touchstart handler
+                const pressHandler = (e) => {
+                    if (gameState !== 'playing') return;
+                    updateKey(btnInfo.key, true);
+                    e.preventDefault();
+                };
+                
+                // Mouseup/touchend handler
+                const releaseHandler = (e) => {
+                    updateKey(btnInfo.key, false);
+                    e.preventDefault();
+                };
+
+                btn.addEventListener('mousedown', pressHandler);
+                btn.addEventListener('touchstart', pressHandler, { passive: false });
+
+                btn.addEventListener('mouseup', releaseHandler);
+                btn.addEventListener('touchend', releaseHandler);
+                btn.addEventListener('mouseleave', releaseHandler); // Important for mouse drag off button
+            }
+        });
+
+        // Event Listeners for Keyboard
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+
+        // Initial setup on load 
+        window.onload = function() {
+            // Initialize camera/car position for initial drawing
+            car.x = TRACK_PATH[0][0];
+            car.y = TRACK_PATH[0][1];
+            cameraX = car.x - WIDTH / 2;
+            cameraY = car.y - HEIGHT / 2;
+            
+            drawTrack();
+            drawCar();
+        }
+
+    </script>
+</body>
+</html>
